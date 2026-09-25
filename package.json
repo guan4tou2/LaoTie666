@@ -24,6 +24,30 @@
         "command": "vscext.LaoTie",
         "title": "老鐵我做得對嗎？",
         "category": "LaoTie"
+      },
+      {
+        "command": "vscext.LaoTieNextError",
+        "title": "老鐵帶我去看bug",
+        "category": "LaoTie"
+      },
+      {
+        "command": "vscext.LaoTieDailyStats",
+        "title": "老鐵今日戰報",
+        "category": "LaoTie"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "vscext.LaoTie",
+        "key": "ctrl+shift+6",
+        "mac": "cmd+shift+6",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "vscext.LaoTieNextError",
+        "key": "ctrl+shift+7",
+        "mac": "cmd+shift+7",
+        "when": "editorTextFocus"
       }
     ],
     "menus": {

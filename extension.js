@@ -2,6 +2,9 @@ const vscode = require('vscode');
 
 let statusBarItem;
 let consecutiveCleanCount = 0;
+let dailyStats = { checks: 0, errors: 0, cleans: 0, date: new Date().toDateString() };
+
+const DANMAKU_TEXTS = ['666', '牛逼', '厲害', '大佬', '秀', '穩', 'nb', '太強了'];
 
 const SUCCESS_MESSAGES = [
     '沒毛病阿老鐵！',
@@ -34,8 +37,51 @@ const STREAK_MESSAGES = [
     { min: 20, msg: '老鐵，二十連無錯，你是神！跪了！' },
 ];
 
+const LANGUAGE_MESSAGES = {
+    javascript:  { name: '腳本',   success: '老鐵，你的 JS 腳本穩了！',        error: '老鐵，你的 JS 腳本翻車了！' },
+    typescript:  { name: '型別腳本', success: '老鐵，你的 TS 型別穩穩的！',      error: '老鐵，你的 TS 型別出問題了！' },
+    python:      { name: '蛇',     success: '老鐵，你的蛇沒毛病！',            error: '老鐵，你的蛇咬人了！' },
+    java:        { name: '咖啡',   success: '老鐵，你的 Java 煮得不錯！',       error: '老鐵，你的 Java 燒焦了！' },
+    c:           { name: 'C',      success: '老鐵，你的 C 語言硬核無錯！',      error: '老鐵，你的 C 語言段錯誤了！' },
+    cpp:         { name: 'C++',    success: '老鐵，你的 C++ 編譯通過！',        error: '老鐵，你的 C++ 又 segfault 了！' },
+    csharp:      { name: 'C#',     success: '老鐵，你的 C# 沒毛病！',          error: '老鐵，你的 C# 拋異常了！' },
+    go:          { name: 'Go',     success: '老鐵，你的 Go 跑得飛快！',         error: '老鐵，你的 Go 跑不動了！' },
+    rust:        { name: 'Rust',   success: '老鐵，你的 Rust 安全又穩！',       error: '老鐵，借用檢查器不讓你過！' },
+    ruby:        { name: '寶石',   success: '老鐵，你的 Ruby 閃閃發光！',       error: '老鐵，你的 Ruby 碎了！' },
+    php:         { name: 'PHP',    success: '老鐵，你的 PHP 是最好的語言！',     error: '老鐵，你的 PHP 500 了！' },
+    swift:       { name: 'Swift',  success: '老鐵，你的 Swift 飛起來了！',      error: '老鐵，你的 Swift 墜機了！' },
+    kotlin:      { name: 'Kotlin', success: '老鐵，你的 Kotlin 穩如泰山！',     error: '老鐵，你的 Kotlin 空指針了！' },
+    html:        { name: '網頁',   success: '老鐵，你的網頁沒毛病！',           error: '老鐵，你的網頁標籤沒閉合！' },
+    css:         { name: '樣式',   success: '老鐵，你的樣式美翻了！',           error: '老鐵，你的樣式亂了！' },
+    scss:        { name: '樣式',   success: '老鐵，你的 SCSS 編譯過了！',       error: '老鐵，你的 SCSS 語法有坑！' },
+    json:        { name: 'JSON',   success: '老鐵，你的 JSON 格式正確！',       error: '老鐵，你的 JSON 少了個逗號！' },
+    yaml:        { name: 'YAML',   success: '老鐵，你的 YAML 縮排正確！',       error: '老鐵，你的 YAML 縮排歪了！' },
+    sql:         { name: 'SQL',    success: '老鐵，你的 SQL 查詢穩了！',        error: '老鐵，你的 SQL 語法錯了！' },
+    shellscript: { name: 'Shell',  success: '老鐵，你的 Shell 腳本能跑！',      error: '老鐵，你的 Shell 腳本炸了！' },
+    lua:         { name: 'Lua',    success: '老鐵，你的 Lua 跑得順！',          error: '老鐵，你的 Lua 報錯了！' },
+    r:           { name: 'R',      success: '老鐵，你的 R 統計沒毛病！',        error: '老鐵，你的 R 跑不出結果！' },
+    dart:        { name: 'Dart',   success: '老鐵，你的 Dart 飛鏢命中！',       error: '老鐵，你的 Dart 飛偏了！' },
+    vue:         { name: 'Vue',    success: '老鐵，你的 Vue 組件穩了！',        error: '老鐵，你的 Vue 組件崩了！' },
+    svelte:      { name: 'Svelte', success: '老鐵，你的 Svelte 輕巧無錯！',    error: '老鐵，你的 Svelte 出問題了！' },
+};
+
 function pickRandom(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getLanguageMessage(languageId, type) {
+    const lang = LANGUAGE_MESSAGES[languageId];
+    if (lang) {
+        return lang[type];
+    }
+    return null;
+}
+
+function resetDailyStatsIfNeeded() {
+    const today = new Date().toDateString();
+    if (dailyStats.date !== today) {
+        dailyStats = { checks: 0, errors: 0, cleans: 0, date: today };
+    }
 }
 
 /**
@@ -68,6 +114,38 @@ async function activate(context) {
             vscode.window.showErrorMessage('老鐵錯啦！');
             console.error(error);
         }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscext.LaoTieNextError', async function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showWarningMessage('請先打開一個文件！');
+            return;
+        }
+
+        const diagnostics = vscode.languages.getDiagnostics(editor.document.uri);
+        const errors = diagnostics
+            .filter(d => d.severity === vscode.DiagnosticSeverity.Error)
+            .sort((a, b) => a.range.start.line - b.range.start.line);
+
+        if (errors.length === 0) {
+            vscode.window.showInformationMessage('老鐵，沒有 bug 可以帶你去看！');
+            return;
+        }
+
+        const currentLine = editor.selection.active.line;
+        const nextError = errors.find(e => e.range.start.line > currentLine) || errors[0];
+
+        const pos = nextError.range.start;
+        editor.selection = new vscode.Selection(pos, pos);
+        editor.revealRange(nextError.range, vscode.TextEditorRevealType.InCenter);
+        vscode.window.showWarningMessage(`老鐵，bug 在第 ${pos.line + 1} 行：${nextError.message}`);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('vscext.LaoTieDailyStats', function () {
+        resetDailyStatsIfNeeded();
+        const msg = `老鐵今日戰報：檢查 ${dailyStats.checks} 次，無錯 ${dailyStats.cleans} 次，有錯 ${dailyStats.errors} 次`;
+        vscode.window.showInformationMessage(msg);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -151,7 +229,7 @@ function show666Effect(editor) {
             range,
             renderOptions: {
                 after: {
-                    contentText: '666',
+                    contentText: pickRandom(DANMAKU_TEXTS),
                     color: getRandomColor(),
                     fontStyle: 'normal',
                     fontWeight: 'bold',
@@ -177,25 +255,36 @@ function getRandomColor() {
 async function checkDocument(document) {
     const editor = vscode.window.activeTextEditor;
 
+    resetDailyStatsIfNeeded();
+    dailyStats.checks++;
+
     const diagnostics = vscode.languages.getDiagnostics(document.uri);
 
     const errors = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error);
     const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
+    const langId = document.languageId;
 
     updateStatusBar(document);
 
     if (errors.length > 0) {
         consecutiveCleanCount = 0;
-        vscode.window.showErrorMessage(`${pickRandom(ERROR_MESSAGES)}（${errors.length} 個錯誤）`);
+        dailyStats.errors++;
+        const langMsg = getLanguageMessage(langId, 'error');
+        const msg = langMsg || pickRandom(ERROR_MESSAGES);
+        vscode.window.showErrorMessage(`${msg}（${errors.length} 個錯誤）`);
     } else if (warnings.length > 0) {
         consecutiveCleanCount++;
+        dailyStats.cleans++;
         vscode.window.showWarningMessage(`${pickRandom(WARNING_MESSAGES)}（${warnings.length} 個警告）`);
         if (editor) {
             show666Effect(editor);
         }
     } else {
         consecutiveCleanCount++;
-        vscode.window.showInformationMessage(pickRandom(SUCCESS_MESSAGES));
+        dailyStats.cleans++;
+        const langMsg = getLanguageMessage(langId, 'success');
+        const msg = langMsg || pickRandom(SUCCESS_MESSAGES);
+        vscode.window.showInformationMessage(msg);
         if (editor) {
             show666Effect(editor);
         }
@@ -222,6 +311,7 @@ module.exports = {
     activate,
     deactivate,
     getRandomColor,
+    getLanguageMessage,
     pickRandom,
     checkDocument,
     show666Effect,
@@ -230,5 +320,7 @@ module.exports = {
     SUCCESS_MESSAGES,
     ERROR_MESSAGES,
     WARNING_MESSAGES,
-    STREAK_MESSAGES
+    STREAK_MESSAGES,
+    LANGUAGE_MESSAGES,
+    DANMAKU_TEXTS
 }
