@@ -2,7 +2,9 @@ const vscode = require('vscode');
 
 let statusBarItem;
 let consecutiveCleanCount = 0;
-let dailyStats = { checks: 0, errors: 0, cleans: 0, date: new Date().toDateString() };
+let extensionContext;
+let checkDebounceTimer;
+let danmakuClearTimer;
 
 const DANMAKU_TEXTS = ['666', '牛逼', '厲害', '大佬', '秀', '穩', 'nb', '太強了'];
 
@@ -65,6 +67,10 @@ const LANGUAGE_MESSAGES = {
     svelte:      { name: 'Svelte', success: '老鐵，你的 Svelte 輕巧無錯！',    error: '老鐵，你的 Svelte 出問題了！' },
 };
 
+function getConfig(key) {
+    return vscode.workspace.getConfiguration('laotie666').get(key);
+}
+
 function pickRandom(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -77,10 +83,18 @@ function getLanguageMessage(languageId, type) {
     return null;
 }
 
-function resetDailyStatsIfNeeded() {
-    const today = new Date().toDateString();
-    if (dailyStats.date !== today) {
-        dailyStats = { checks: 0, errors: 0, cleans: 0, date: today };
+function loadDailyStats() {
+    if (!extensionContext) return { checks: 0, errors: 0, cleans: 0, date: new Date().toDateString() };
+    const saved = extensionContext.globalState.get('dailyStats');
+    if (saved && saved.date === new Date().toDateString()) {
+        return saved;
+    }
+    return { checks: 0, errors: 0, cleans: 0, date: new Date().toDateString() };
+}
+
+function saveDailyStats(stats) {
+    if (extensionContext) {
+        extensionContext.globalState.update('dailyStats', stats);
     }
 }
 
@@ -88,7 +102,7 @@ function resetDailyStatsIfNeeded() {
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
-    console.log('Congratulations, your extension "vscext" is now active!');
+    extensionContext = context;
 
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBarItem.command = 'vscext.LaoTie';
@@ -104,11 +118,21 @@ async function activate(context) {
             }
 
             const document = editor.document;
+
+            const disposable = vscode.languages.onDidChangeDiagnostics(async (e) => {
+                const affected = e.uris.some(uri => uri.toString() === document.uri.toString());
+                if (affected) {
+                    disposable.dispose();
+                    await checkDocument(document);
+                }
+            });
+
             await vscode.commands.executeCommand('editor.action.triggerParameterHints');
 
-            setTimeout(async () => {
-                await checkDocument(document);
-            }, 500);
+            setTimeout(() => {
+                disposable.dispose();
+                checkDocument(document);
+            }, 2000);
 
         } catch (error) {
             vscode.window.showErrorMessage('老鐵錯啦！');
@@ -143,13 +167,21 @@ async function activate(context) {
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscext.LaoTieDailyStats', function () {
-        resetDailyStatsIfNeeded();
-        const msg = `老鐵今日戰報：檢查 ${dailyStats.checks} 次，無錯 ${dailyStats.cleans} 次，有錯 ${dailyStats.errors} 次`;
+        const stats = loadDailyStats();
+        const msg = `老鐵今日戰報：檢查 ${stats.checks} 次，無錯 ${stats.cleans} 次，有錯 ${stats.errors} 次`;
         vscode.window.showInformationMessage(msg);
     }));
 
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (document) => {
-        await checkDocument(document);
+        if (!getConfig('autoCheckOnSave')) return;
+
+        if (checkDebounceTimer) {
+            clearTimeout(checkDebounceTimer);
+        }
+        checkDebounceTimer = setTimeout(async () => {
+            checkDebounceTimer = null;
+            await checkDocument(document);
+        }, 300);
     }));
 
     context.subscriptions.push(vscode.languages.onDidChangeDiagnostics(() => {
@@ -206,6 +238,13 @@ let decorationType = vscode.window.createTextEditorDecorationType({
 });
 
 function show666Effect(editor) {
+    if (!getConfig('showDanmaku')) return;
+
+    if (danmakuClearTimer) {
+        clearTimeout(danmakuClearTimer);
+        editor.setDecorations(decorationType, []);
+    }
+
     const visibleRanges = editor.visibleRanges;
     if (visibleRanges.length === 0) return;
 
@@ -242,9 +281,11 @@ function show666Effect(editor) {
 
     editor.setDecorations(decorationType, decorations);
 
-    setTimeout(() => {
+    const duration = getConfig('danmakuDuration') || 3000;
+    danmakuClearTimer = setTimeout(() => {
         editor.setDecorations(decorationType, []);
-    }, 3000);
+        danmakuClearTimer = null;
+    }, duration);
 }
 
 function getRandomColor() {
@@ -255,41 +296,52 @@ function getRandomColor() {
 async function checkDocument(document) {
     const editor = vscode.window.activeTextEditor;
 
-    resetDailyStatsIfNeeded();
-    dailyStats.checks++;
+    const stats = loadDailyStats();
+    stats.checks++;
 
     const diagnostics = vscode.languages.getDiagnostics(document.uri);
 
     const errors = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error);
     const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
     const langId = document.languageId;
+    const quiet = getConfig('quietMode');
 
     updateStatusBar(document);
 
     if (errors.length > 0) {
         consecutiveCleanCount = 0;
-        dailyStats.errors++;
-        const langMsg = getLanguageMessage(langId, 'error');
-        const msg = langMsg || pickRandom(ERROR_MESSAGES);
-        vscode.window.showErrorMessage(`${msg}（${errors.length} 個錯誤）`);
+        stats.errors++;
+        if (!quiet) {
+            const langMsg = getLanguageMessage(langId, 'error');
+            const msg = langMsg || pickRandom(ERROR_MESSAGES);
+            vscode.window.showErrorMessage(`${msg}（${errors.length} 個錯誤）`);
+        }
     } else if (warnings.length > 0) {
         consecutiveCleanCount++;
-        dailyStats.cleans++;
-        vscode.window.showWarningMessage(`${pickRandom(WARNING_MESSAGES)}（${warnings.length} 個警告）`);
+        stats.cleans++;
+        if (!quiet) {
+            vscode.window.showWarningMessage(`${pickRandom(WARNING_MESSAGES)}（${warnings.length} 個警告）`);
+        }
         if (editor) {
             show666Effect(editor);
         }
     } else {
         consecutiveCleanCount++;
-        dailyStats.cleans++;
-        const langMsg = getLanguageMessage(langId, 'success');
-        const msg = langMsg || pickRandom(SUCCESS_MESSAGES);
-        vscode.window.showInformationMessage(msg);
+        stats.cleans++;
+        if (!quiet) {
+            const langMsg = getLanguageMessage(langId, 'success');
+            const msg = langMsg || pickRandom(SUCCESS_MESSAGES);
+            vscode.window.showInformationMessage(msg);
+        }
         if (editor) {
             show666Effect(editor);
         }
-        showStreakMessage();
+        if (!quiet) {
+            showStreakMessage();
+        }
     }
+
+    saveDailyStats(stats);
 }
 
 function showStreakMessage() {
@@ -302,6 +354,12 @@ function showStreakMessage() {
 }
 
 function deactivate() {
+    if (checkDebounceTimer) {
+        clearTimeout(checkDebounceTimer);
+    }
+    if (danmakuClearTimer) {
+        clearTimeout(danmakuClearTimer);
+    }
     if (statusBarItem) {
         statusBarItem.dispose();
     }

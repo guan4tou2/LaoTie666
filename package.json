@@ -58,6 +58,33 @@
           "when": "editorIsOpen"
         }
       ]
+    },
+    "configuration": {
+      "title": "LaoTie666",
+      "properties": {
+        "laotie666.autoCheckOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "儲存時自動檢查語法"
+        },
+        "laotie666.showDanmaku": {
+          "type": "boolean",
+          "default": true,
+          "description": "顯示彈幕特效"
+        },
+        "laotie666.danmakuDuration": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 500,
+          "maximum": 10000,
+          "description": "彈幕顯示時間（毫秒）"
+        },
+        "laotie666.quietMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "靜音模式：只更新狀態列，不彈出通知"
+        }
+      }
     }
   },
   "scripts": {
