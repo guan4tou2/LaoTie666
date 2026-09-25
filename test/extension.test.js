@@ -1,6 +1,6 @@
 const assert = require('assert');
 const vscode = require('vscode');
-const { getRandomColor, activate, deactivate } = require('../extension');
+const { getRandomColor, getTimeGreeting, activate, deactivate } = require('../extension');
 
 suite('LaoTie666 Extension', () => {
 
@@ -37,6 +37,49 @@ suite('LaoTie666 Extension', () => {
 				seen.add(getRandomColor());
 			}
 			assert.ok(seen.size > 1, 'Expected multiple different colors');
+		});
+	});
+
+	suite('getTimeGreeting', () => {
+		test('should export getTimeGreeting function', () => {
+			assert.strictEqual(typeof getTimeGreeting, 'function');
+		});
+
+		test('should return a string or null', () => {
+			const result = getTimeGreeting();
+			assert.ok(result === null || typeof result === 'string');
+		});
+
+		test('should return noon greeting during lunch hours', () => {
+			const hour = new Date().getHours();
+			const result = getTimeGreeting();
+			if (hour >= 11 && hour < 13) {
+				assert.strictEqual(result, '老鐵，中午了，該吃飯了！');
+			}
+		});
+
+		test('should return evening greeting during evening hours', () => {
+			const hour = new Date().getHours();
+			const result = getTimeGreeting();
+			if (hour >= 17 && hour < 19) {
+				assert.strictEqual(result, '老鐵，傍晚了，該下班了！');
+			}
+		});
+
+		test('should return late night greeting during late hours', () => {
+			const hour = new Date().getHours();
+			const result = getTimeGreeting();
+			if (hour >= 22 || hour < 5) {
+				assert.strictEqual(result, '老鐵，這麼晚還在寫代碼，注意身體！');
+			}
+		});
+
+		test('should return null during normal working hours', () => {
+			const hour = new Date().getHours();
+			const result = getTimeGreeting();
+			if (hour >= 5 && hour < 11 || hour >= 13 && hour < 17 || hour >= 19 && hour < 22) {
+				assert.strictEqual(result, null);
+			}
 		});
 	});
 

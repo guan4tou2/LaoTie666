@@ -100,6 +100,18 @@ function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
 }
 
+function getTimeGreeting() {
+    const hour = new Date().getHours();
+    if (hour >= 11 && hour < 13) {
+        return '老鐵，中午了，該吃飯了！';
+    } else if (hour >= 17 && hour < 19) {
+        return '老鐵，傍晚了，該下班了！';
+    } else if (hour >= 22 || hour < 5) {
+        return '老鐵，這麼晚還在寫代碼，注意身體！';
+    }
+    return null;
+}
+
 // 修改語法檢查函數
 async function checkDocument(document) {
     const editor = vscode.window.activeTextEditor;
@@ -118,6 +130,11 @@ async function checkDocument(document) {
         vscode.window.showInformationMessage('沒毛病阿老鐵！');
         show666Effect(editor);
     }
+
+    const greeting = getTimeGreeting();
+    if (greeting) {
+        vscode.window.showInformationMessage(greeting);
+    }
 }
 
 // This method is called when your extension is deactivated
@@ -134,6 +151,7 @@ module.exports = {
 	activate,
 	deactivate,
 	getRandomColor,
+	getTimeGreeting,
 	checkDocument,
 	show666Effect
 }
