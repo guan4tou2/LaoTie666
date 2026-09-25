@@ -132,5 +132,8 @@ function deactivate() {
 
 module.exports = {
 	activate,
-	deactivate
+	deactivate,
+	getRandomColor,
+	checkDocument,
+	show666Effect
 }
