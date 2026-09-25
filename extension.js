@@ -5,6 +5,7 @@ let consecutiveCleanCount = 0;
 let extensionContext;
 let checkDebounceTimer;
 let danmakuClearTimer;
+const suggestedLanguages = new Set();
 
 const DANMAKU_TEXTS = ['666', '牛逼', '厲害', '大佬', '秀', '穩', 'nb', '太強了'];
 
@@ -67,8 +68,47 @@ const LANGUAGE_MESSAGES = {
     svelte:      { name: 'Svelte', success: '老鐵，你的 Svelte 輕巧無錯！',    error: '老鐵，你的 Svelte 出問題了！' },
 };
 
+const RECOMMENDED_EXTENSIONS = {
+    javascript:  { id: 'dbaeumer.vscode-eslint',       name: 'ESLint' },
+    typescript:  { id: 'dbaeumer.vscode-eslint',       name: 'ESLint' },
+    python:      { id: 'ms-python.python',             name: 'Python' },
+    java:        { id: 'redhat.java',                  name: 'Language Support for Java' },
+    c:           { id: 'ms-vscode.cpptools',           name: 'C/C++' },
+    cpp:         { id: 'ms-vscode.cpptools',           name: 'C/C++' },
+    csharp:      { id: 'ms-dotnettools.csdevkit',      name: 'C# Dev Kit' },
+    go:          { id: 'golang.go',                    name: 'Go' },
+    rust:        { id: 'rust-lang.rust-analyzer',      name: 'rust-analyzer' },
+    ruby:        { id: 'shopify.ruby-lsp',             name: 'Ruby LSP' },
+    php:         { id: 'bmewburn.vscode-intelephense-client', name: 'Intelephense' },
+    swift:       { id: 'sswg.swift-lang',              name: 'Swift' },
+    kotlin:      { id: 'fwcd.kotlin',                  name: 'Kotlin' },
+    dart:        { id: 'dart-code.dart-code',          name: 'Dart' },
+    vue:         { id: 'vue.volar',                    name: 'Vue - Official' },
+    svelte:      { id: 'svelte.svelte-vscode',         name: 'Svelte for VS Code' },
+    lua:         { id: 'sumneko.lua',                  name: 'Lua' },
+    shellscript: { id: 'timonwong.shellcheck',         name: 'ShellCheck' },
+};
+
 function getConfig(key) {
     return vscode.workspace.getConfiguration('laotie666').get(key);
+}
+
+async function suggestExtensionIfNeeded(languageId) {
+    const rec = RECOMMENDED_EXTENSIONS[languageId];
+    if (!rec) return;
+
+    const ext = vscode.extensions.getExtension(rec.id);
+    if (ext) return;
+
+    const install = '安裝';
+    const dismiss = '不用了';
+    const result = await vscode.window.showInformationMessage(
+        `老鐵，裝個 ${rec.name} 擴展，檢查才更準！`,
+        install, dismiss
+    );
+    if (result === install) {
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', rec.id);
+    }
 }
 
 function pickRandom(arr) {
@@ -339,6 +379,11 @@ async function checkDocument(document) {
         if (!quiet) {
             showStreakMessage();
         }
+
+        if (diagnostics.length === 0 && !suggestedLanguages.has(langId)) {
+            suggestedLanguages.add(langId);
+            suggestExtensionIfNeeded(langId);
+        }
     }
 
     saveDailyStats(stats);
@@ -375,10 +420,12 @@ module.exports = {
     show666Effect,
     updateStatusBar,
     showStreakMessage,
+    suggestExtensionIfNeeded,
     SUCCESS_MESSAGES,
     ERROR_MESSAGES,
     WARNING_MESSAGES,
     STREAK_MESSAGES,
     LANGUAGE_MESSAGES,
-    DANMAKU_TEXTS
+    DANMAKU_TEXTS,
+    RECOMMENDED_EXTENSIONS
 }

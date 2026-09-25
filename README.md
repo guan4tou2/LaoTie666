@@ -53,10 +53,45 @@
 4. 使用 `Ctrl+Shift+7`（Mac: `Cmd+Shift+7`）快速跳到下一個錯誤
 5. 命令面板輸入「老鐵今日戰報」查看今日統計
 
+## 工作原理
+
+LaoTie666 **不負責編譯或語法分析**，它讀取 VS Code 和其他語言擴展提供的診斷結果，然後用老鐵風格呈現。所以你需要安裝對應語言的擴展才能獲得最佳效果。
+
+如果偵測到缺少推薦的語言擴展，LaoTie666 會提示你安裝。
+
+## 推薦搭配的擴展
+
+| 語言 | 推薦擴展 |
+|------|---------|
+| JavaScript / TypeScript | [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) |
+| Python | [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) |
+| Java | [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java) |
+| C / C++ | [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) |
+| C# | [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) |
+| Go | [Go](https://marketplace.visualstudio.com/items?itemName=golang.go) |
+| Rust | [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) |
+| Ruby | [Ruby LSP](https://marketplace.visualstudio.com/items?itemName=shopify.ruby-lsp) |
+| PHP | [Intelephense](https://marketplace.visualstudio.com/items?itemName=bmewburn.vscode-intelephense-client) |
+| Swift | [Swift](https://marketplace.visualstudio.com/items?itemName=sswg.swift-lang) |
+| Kotlin | [Kotlin](https://marketplace.visualstudio.com/items?itemName=fwcd.kotlin) |
+| Dart | [Dart](https://marketplace.visualstudio.com/items?itemName=dart-code.dart-code) |
+| Vue | [Vue - Official](https://marketplace.visualstudio.com/items?itemName=vue.volar) |
+| Svelte | [Svelte for VS Code](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) |
+| Lua | [Lua](https://marketplace.visualstudio.com/items?itemName=sumneko.lua) |
+| Shell | [ShellCheck](https://marketplace.visualstudio.com/items?itemName=timonwong.shellcheck) |
+
+## 設定選項
+
+| 設定 | 預設 | 說明 |
+|------|------|------|
+| `laotie666.autoCheckOnSave` | `true` | 儲存時自動檢查語法 |
+| `laotie666.showDanmaku` | `true` | 顯示彈幕特效 |
+| `laotie666.danmakuDuration` | `3000` | 彈幕顯示時間（毫秒，500-10000） |
+| `laotie666.quietMode` | `false` | 靜音模式：只更新狀態列，不彈出通知 |
+
 ## 系統需求
 
 - VS Code 1.93.0 或更高版本
-- 安裝對應語言的 VS Code 擴展以獲得最佳診斷效果
 
 ## 問題回報
 
